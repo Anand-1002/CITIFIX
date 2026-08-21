@@ -22,6 +22,7 @@
     "form-data": "^4.0.5",
     "groq-sdk": "^1.1.2",
     "jsonwebtoken": "^9.0.2",
+    "localtunnel": "^2.0.2",
     "node-cron": "^3.0.3",
     "nodemailer": "^8.0.5",
     "qrcode": "^1.5.4",

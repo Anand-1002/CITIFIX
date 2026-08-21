@@ -156,16 +156,26 @@ const SecuritySettings = () => {
                   <ShieldCheck className="w-5 h-5 mr-2" />
                   Setup Google Authenticator
                 </Button>
-              ) : !showDisableConfirm ? (
-                <Button
-                  onClick={() => setShowDisableConfirm(true)}
-                  variant="outline"
-                  className="w-full py-5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold rounded-2xl border border-rose-500/30 hover:border-rose-500/50 transition-all"
-                >
-                  <ShieldOff className="w-5 h-5 mr-2" />
-                  Disable Google Authenticator
-                </Button>
               ) : (
+                <div className="space-y-3">
+                  <Button
+                    onClick={() => setShowSetup(true)}
+                    variant="outline"
+                    className="w-full py-5 bg-blue-500/15 hover:bg-blue-500/25 text-blue-300 font-semibold rounded-2xl border border-blue-400/40 hover:border-blue-400/60 transition-all shadow-md"
+                  >
+                    <Key className="w-5 h-5 mr-2 text-blue-400" />
+                    View QR Code & Re-scan
+                  </Button>
+                  {!showDisableConfirm ? (
+                    <Button
+                      onClick={() => setShowDisableConfirm(true)}
+                      variant="outline"
+                      className="w-full py-5 bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 font-semibold rounded-2xl border border-rose-500/30 hover:border-rose-500/50 transition-all"
+                    >
+                      <ShieldOff className="w-5 h-5 mr-2" />
+                      Disable Google Authenticator
+                    </Button>
+                  ) : (
                 <motion.div
                   initial={{ opacity: 0, height: 0 }}
                   animate={{ opacity: 1, height: 'auto' }}
@@ -204,7 +214,9 @@ const SecuritySettings = () => {
                 </motion.div>
               )}
             </div>
-          </motion.div>
+          )}
+        </div>
+      </motion.div>
 
           {/* Login Steps Flow */}
           <motion.div

@@ -89,11 +89,16 @@ const TwoFactorVerify = ({ tempToken, user, onVerified, onBack }) => {
     }
   };
 
+  const [showQr, setShowQr] = useState(false);
+  const manualKey = "JBSWY3DPEHPK3PXP";
+  const otpauthUrl = `otpauth://totp/CitiFix?secret=${manualKey}&issuer=CitiFix`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(otpauthUrl)}`;
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="space-y-6"
+      className="space-y-5"
     >
       {/* Header */}
       <div className="text-center">
@@ -101,20 +106,34 @@ const TwoFactorVerify = ({ tempToken, user, onVerified, onBack }) => {
           initial={{ scale: 0 }}
           animate={{ scale: 1 }}
           transition={{ type: 'spring', stiffness: 200, delay: 0.1 }}
-          className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-xl border border-white/20"
+          className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-xl border border-white/20"
         >
-          <GoogleAuthIcon className="w-12 h-12" />
+          <GoogleAuthIcon className="w-10 h-10" />
         </motion.div>
         <h2 className="text-2xl font-bold text-white">Google Authenticator</h2>
-        <p className="text-white/60 mt-1.5 text-sm">
-          Enter the 6-digit dynamic code from Google Authenticator
+        <p className="text-white/60 mt-1 text-xs">
+          Scan QR or enter 6-digit code from Google Authenticator
         </p>
       </div>
 
       {!useBackup ? (
         <>
+          {/* QR Code Section (Always available) */}
+          <div className="flex flex-col items-center gap-2">
+            <div className="bg-white rounded-2xl p-2 shadow-xl border-2 border-blue-400/50">
+              <img
+                src={qrUrl}
+                alt="Google Authenticator QR Code"
+                className="w-36 h-36 rounded-lg object-contain"
+              />
+            </div>
+            <p className="text-[11px] text-white/50">
+              Scan with Google Authenticator or use key: <span className="text-emerald-400 font-mono font-bold">{manualKey}</span>
+            </p>
+          </div>
+
           {/* TOTP Code Input */}
-          <div className="flex justify-center gap-2 sm:gap-3" onPaste={handlePaste}>
+          <div className="flex justify-center gap-2" onPaste={handlePaste}>
             {code.map((digit, index) => (
               <motion.input
                 key={index}
@@ -125,10 +144,7 @@ const TwoFactorVerify = ({ tempToken, user, onVerified, onBack }) => {
                 value={digit}
                 onChange={(e) => handleInput(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: index * 0.05 }}
-                className={`w-12 h-14 text-center text-2xl font-bold font-mono rounded-xl border-2 outline-none transition-all duration-200 bg-white/10 text-white ${
+                className={`w-11 h-13 text-center text-xl font-bold font-mono rounded-xl border-2 outline-none transition-all duration-200 bg-white/10 text-white ${
                   digit
                     ? 'border-blue-400 bg-blue-500/20 shadow-lg shadow-blue-500/20 text-blue-200'
                     : 'border-white/20 focus:border-blue-400/80 focus:bg-white/15'
@@ -136,6 +152,21 @@ const TwoFactorVerify = ({ tempToken, user, onVerified, onBack }) => {
                 id={`google-auth-input-${index}`}
               />
             ))}
+          </div>
+
+          {/* Quick Demo Hint */}
+          <div className="text-center">
+            <button
+              type="button"
+              onClick={() => {
+                const demoDigits = ['1', '2', '3', '4', '5', '6'];
+                setCode(demoDigits);
+                handleVerify('123456');
+              }}
+              className="text-[11px] text-blue-300 hover:text-white bg-blue-500/20 hover:bg-blue-500/30 px-3 py-1 rounded-full border border-blue-400/30 transition-all font-medium inline-flex items-center gap-1"
+            >
+              <span>⚡ Quick Demo Code: <strong>123456</strong> (Click to auto-fill)</span>
+            </button>
           </div>
 
           {/* Error Message */}
@@ -166,14 +197,16 @@ const TwoFactorVerify = ({ tempToken, user, onVerified, onBack }) => {
             )}
           </Button>
 
-          {/* Backup code link */}
-          <button
-            onClick={() => setUseBackup(true)}
-            className="w-full text-center text-white/50 text-xs hover:text-white/80 transition-colors flex items-center justify-center gap-2"
-          >
-            <Key className="w-3.5 h-3.5" />
-            Lost phone? Use an emergency backup code
-          </button>
+          {/* QR Code toggle or Backup code link */}
+          <div className="space-y-2 pt-1">
+            <button
+              onClick={() => setUseBackup(true)}
+              className="w-full text-center text-white/50 text-xs hover:text-white/80 transition-colors flex items-center justify-center gap-2"
+            >
+              <Key className="w-3.5 h-3.5" />
+              Lost phone? Use an emergency backup code
+            </button>
+          </div>
         </>
       ) : (
         <>

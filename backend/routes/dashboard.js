@@ -6,7 +6,7 @@ const router = express.Router();
 const prisma = new PrismaClient();
 
 // Comprehensive real-time analytics endpoint
-router.get("/analytics", authMiddleware, adminMiddleware, async (req, res) => {
+router.get("/analytics", authMiddleware, async (req, res) => {
   try {
     // Core counts
     const [totalComplaints, totalUsers, pendingCount, assignedCount, resolvedCount, escalatedCount, slaBreachedCount] =

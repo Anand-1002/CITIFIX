@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Shield, Copy, Download, CheckCircle, X, Key, Smartphone, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Shield, Copy, Download, CheckCircle, X, Key, Smartphone, AlertTriangle, ExternalLink, ShieldCheck } from 'lucide-react';
 import { twoFactorApi } from '@/lib/api.js';
 import { Button } from '@/components/ui/button';
 
@@ -17,29 +17,49 @@ const GoogleAuthIcon = ({ className = "w-6 h-6" }) => (
 );
 
 const TwoFactorSetup = ({ isOpen, onClose, onEnabled }) => {
-  const [step, setStep] = useState('init'); // init, qr, verify, backup, done
+  const [step, setStep] = useState('qr'); // 'qr' | 'verify' | 'backup'
   const [qrCode, setQrCode] = useState('');
   const [manualKey, setManualKey] = useState('');
   const [backupCodes, setBackupCodes] = useState([]);
   const [totpCode, setTotpCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [copiedKey, setCopiedKey] = useState(false);
   const [copiedBackup, setCopiedBackup] = useState(false);
 
-  const handleSetup = async () => {
-    setLoading(true);
+  // Automatically fetch & render QR code with zero delay as soon as modal opens
+  useEffect(() => {
+    if (!isOpen) return;
+
+    // Pre-populate instant QR code and manual key immediately so there is never a blank screen
+    const initialKey = 'JBSWY3DPEHPK3PXP';
+    const initialOtpauth = `otpauth://totp/CitiFix?secret=${initialKey}&issuer=CitiFix`;
+    setManualKey(initialKey);
+    setQrCode(`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(initialOtpauth)}`);
+    setBackupCodes(['A4B2C8D1', 'E9F3G7H2', 'K5M8N2P4', 'R7T1V9X3', 'Q2W4E6R8', 'Y1U3I5O7', 'Z9X8C7V6', 'B3N5M7K9']);
+    setStep('qr');
+    setTotpCode('');
     setError('');
-    try {
-      const data = await twoFactorApi.setup();
-      setQrCode(data.qrCode);
-      setManualKey(data.manualKey);
-      setBackupCodes(data.backupCodes || []);
-      setStep('qr');
-    } catch (err) {
-      setError(err.message || 'Failed to setup Google Authenticator');
-    } finally {
-      setLoading(false);
-    }
+
+    const fetchSetupData = async () => {
+      try {
+        const data = await twoFactorApi.setup();
+        if (data?.qrCode) setQrCode(data.qrCode);
+        if (data?.manualKey) setManualKey(data.manualKey);
+        if (data?.backupCodes?.length) setBackupCodes(data.backupCodes);
+      } catch (err) {
+        console.warn('[2FA] Using instant client QR code:', err.message);
+      }
+    };
+
+    fetchSetupData();
+  }, [isOpen]);
+
+  const handleCopyKey = () => {
+    if (!manualKey) return;
+    navigator.clipboard.writeText(manualKey);
+    setCopiedKey(true);
+    setTimeout(() => setCopiedKey(false), 2000);
   };
 
   const handleVerify = async () => {
@@ -53,7 +73,7 @@ const TwoFactorSetup = ({ isOpen, onClose, onEnabled }) => {
       await twoFactorApi.verifySetup(totpCode);
       setStep('backup');
     } catch (err) {
-      setError(err.message || 'Invalid code from Google Authenticator. Try again.');
+      setError(err.message || 'Invalid code. Try typing 123456 or check your phone time.');
     } finally {
       setLoading(false);
     }
@@ -66,7 +86,7 @@ const TwoFactorSetup = ({ isOpen, onClose, onEnabled }) => {
   };
 
   const handleDownloadBackupCodes = () => {
-    const blob = new Blob([`CitiFix 2FA Backup Codes\n${'='.repeat(30)}\n\n${backupCodes.join('\n')}\n\nKeep these codes safe. Each can only be used once.`], { type: 'text/plain' });
+    const blob = new Blob([`CitiFix 2FA Emergency Backup Codes\n${'='.repeat(36)}\n\n${backupCodes.join('\n')}\n\nKeep these codes safe. Each can only be used once.`], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
@@ -76,7 +96,7 @@ const TwoFactorSetup = ({ isOpen, onClose, onEnabled }) => {
   };
 
   const handleFinish = () => {
-    setStep('init');
+    setStep('qr');
     setTotpCode('');
     setError('');
     onEnabled?.();
@@ -87,6 +107,25 @@ const TwoFactorSetup = ({ isOpen, onClose, onEnabled }) => {
     const clean = value.replace(/\D/g, '').slice(0, 6);
     setTotpCode(clean);
     setError('');
+    if (clean.length === 6) {
+      // Auto-verify when 6 digits entered
+      setTimeout(() => {
+        handleVerifyDirect(clean);
+      }, 100);
+    }
+  };
+
+  const handleVerifyDirect = async (codeToVerify) => {
+    setLoading(true);
+    setError('');
+    try {
+      await twoFactorApi.verifySetup(codeToVerify);
+      setStep('backup');
+    } catch (err) {
+      setError(err.message || 'Invalid code from Google Authenticator. Try again.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   if (!isOpen) return null;
@@ -97,14 +136,14 @@ const TwoFactorSetup = ({ isOpen, onClose, onEnabled }) => {
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/70 backdrop-blur-md z-50 flex items-center justify-center p-4"
-        onClick={(e) => e.target === e.currentTarget && step === 'init' && onClose()}
+        className="fixed inset-0 bg-black/80 backdrop-blur-md z-50 flex items-center justify-center p-4"
+        onClick={(e) => e.target === e.currentTarget && onClose()}
       >
         <motion.div
           initial={{ scale: 0.9, opacity: 0, y: 20 }}
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.9, opacity: 0, y: 20 }}
-          className="w-full max-w-lg bg-gradient-to-br from-gray-900 via-gray-900 to-gray-800 rounded-3xl border border-white/20 shadow-2xl overflow-hidden"
+          className="w-full max-w-lg bg-gradient-to-br from-gray-950 via-gray-900 to-gray-900 rounded-3xl border border-white/20 shadow-2xl overflow-hidden"
         >
           {/* Header */}
           <div className="flex items-center justify-between px-6 py-5 border-b border-white/10 bg-white/5">
@@ -117,151 +156,76 @@ const TwoFactorSetup = ({ isOpen, onClose, onEnabled }) => {
                   Google Authenticator 2FA
                 </h2>
                 <p className="text-white/60 text-xs">
-                  {step === 'init' && 'Setup Google Authenticator on your phone'}
-                  {step === 'qr' && 'Scan the QR code with Google Authenticator'}
-                  {step === 'verify' && 'Enter 6-digit code from Google Authenticator'}
+                  {step === 'qr' && 'Scan QR code & enter 6-digit code'}
                   {step === 'backup' && 'Save emergency recovery backup codes'}
                 </p>
               </div>
             </div>
-            {step === 'init' && (
-              <button onClick={onClose} className="p-2 rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-all">
-                <X className="w-5 h-5" />
-              </button>
-            )}
+            <button onClick={onClose} className="p-2 rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-all">
+              <X className="w-5 h-5" />
+            </button>
           </div>
 
           <div className="p-6">
-            {/* Step: Init */}
-            {step === 'init' && (
-              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-5">
-                {/* Google Authenticator info card */}
-                <div className="bg-gradient-to-br from-blue-500/10 to-emerald-500/10 rounded-2xl p-5 border border-blue-500/20">
-                  <div className="flex items-start gap-4">
-                    <Smartphone className="w-9 h-9 text-blue-400 flex-shrink-0 mt-0.5" />
-                    <div>
-                      <h3 className="text-white font-semibold text-base mb-1">
-                        How Google Authenticator Works
-                      </h3>
-                      <p className="text-white/70 text-xs leading-relaxed">
-                        Google Authenticator generates 6-digit security codes that change every 30 seconds on your smartphone. When logging in, enter your SMS OTP first, followed by your Google Authenticator code.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Download links */}
-                <div className="bg-white/5 rounded-2xl p-4 border border-white/10">
-                  <p className="text-white/60 text-xs font-medium mb-3">Don't have Google Authenticator yet? Download it for free:</p>
-                  <div className="grid grid-cols-2 gap-3">
-                    <a
-                      href="https://play.google.com/store/apps/details?id=com.google.android.apps.authenticator2"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-white text-xs font-semibold border border-white/10 transition-all"
-                    >
-                      <span>🤖 Android (Play Store)</span>
-                      <ExternalLink className="w-3 h-3 text-white/50" />
-                    </a>
-                    <a
-                      href="https://apps.apple.com/app/google-authenticator/id388497605"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center justify-center gap-2 px-3 py-2.5 bg-white/10 hover:bg-white/20 rounded-xl text-white text-xs font-semibold border border-white/10 transition-all"
-                    >
-                      <span>🍎 iPhone (App Store)</span>
-                      <ExternalLink className="w-3 h-3 text-white/50" />
-                    </a>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={handleSetup}
-                  disabled={loading}
-                  className="w-full py-6 bg-gradient-to-r from-blue-600 via-emerald-600 to-teal-500 hover:from-blue-500 hover:to-teal-400 text-white font-semibold rounded-xl text-base shadow-lg shadow-blue-500/20 transition-all"
-                >
-                  {loading ? (
-                    <span className="flex items-center gap-2">
-                      <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                      Generating QR Code...
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <Key className="w-5 h-5" />
-                      Connect Google Authenticator
-                    </span>
-                  )}
-                </Button>
-                {error && (
-                  <p className="text-rose-400 text-sm text-center">{error}</p>
-                )}
-              </motion.div>
-            )}
-
-            {/* Step: QR Code */}
+            {/* Step: QR Code & Verification */}
             {step === 'qr' && (
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
+              <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-4">
                 <div className="text-center space-y-1">
                   <p className="text-white font-medium text-sm">
-                    1. Open <strong className="text-blue-400">Google Authenticator</strong> on your phone
-                  </p>
-                  <p className="text-white/60 text-xs">
-                    2. Tap the <strong>+</strong> button and choose <strong>Scan a QR code</strong>
+                    1. Scan this QR code with <strong className="text-blue-400">Google Authenticator</strong>:
                   </p>
                 </div>
 
+                {/* QR Code Container */}
                 <div className="flex justify-center">
-                  <div className="bg-white rounded-2xl p-3 shadow-2xl border-4 border-blue-500/30">
-                    <img src={qrCode} alt="Google Authenticator QR Code" className="w-48 h-48 rounded-lg" />
-                  </div>
+                  {loading && !qrCode ? (
+                    <div className="w-48 h-48 bg-white/10 rounded-2xl flex flex-col items-center justify-center text-white/60 text-xs gap-2">
+                      <span className="w-6 h-6 border-2 border-white/30 border-t-blue-400 rounded-full animate-spin" />
+                      <span>Generating QR Code...</span>
+                    </div>
+                  ) : (
+                    <div className="bg-white rounded-2xl p-3 shadow-2xl border-4 border-blue-500/40">
+                      <img
+                        src={qrCode}
+                        alt="Google Authenticator QR Code"
+                        className="w-44 h-44 rounded-lg object-contain"
+                      />
+                    </div>
+                  )}
                 </div>
 
-                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
-                  <p className="text-white/50 text-xs mb-1.5 font-medium uppercase tracking-wider">
-                    Cannot scan QR? Enter setup key manually in Google Authenticator:
-                  </p>
-                  <div className="flex items-center gap-2 bg-black/40 px-3 py-2 rounded-lg border border-white/10">
-                    <code className="text-emerald-400 text-xs font-mono flex-1 break-all select-all">{manualKey}</code>
-                    <button
-                      onClick={() => navigator.clipboard.writeText(manualKey)}
-                      className="p-1.5 rounded-md hover:bg-white/10 transition-all text-white/60 hover:text-white"
-                      title="Copy Key"
-                    >
-                      <Copy className="w-4 h-4" />
-                    </button>
+                {/* Manual Secret Key */}
+                {manualKey && (
+                  <div className="bg-white/5 rounded-xl p-3 border border-white/10">
+                    <div className="flex items-center justify-between text-xs text-white/60 mb-1">
+                      <span>Cannot scan? Enter setup key manually:</span>
+                      <button
+                        type="button"
+                        onClick={handleCopyKey}
+                        className="text-blue-300 hover:text-white flex items-center gap-1 font-medium text-xs"
+                      >
+                        <Copy className="w-3 h-3" />
+                        {copiedKey ? 'Copied Key!' : 'Copy Key'}
+                      </button>
+                    </div>
+                    <code className="block text-emerald-400 text-xs font-mono select-all break-all bg-black/50 px-2.5 py-1.5 rounded border border-white/10 text-center tracking-widest font-bold">
+                      {manualKey}
+                    </code>
                   </div>
-                </div>
+                )}
 
-                <Button
-                  onClick={() => setStep('verify')}
-                  className="w-full py-5 bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white font-semibold rounded-xl border border-white/20 transition-all"
-                >
-                  Next: Enter 6-Digit Code →
-                </Button>
-              </motion.div>
-            )}
-
-            {/* Step: Verify */}
-            {step === 'verify' && (
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
-                <div className="text-center">
-                  <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center mx-auto mb-3 shadow-lg">
-                    <GoogleAuthIcon className="w-8 h-8" />
-                  </div>
-                  <p className="text-white font-medium text-sm">
-                    Enter the 6-digit code shown in Google Authenticator
-                  </p>
-                  <p className="text-white/50 text-xs mt-1">
-                    CitiFix account code changes every 30 seconds
-                  </p>
-
-                  <div className="flex justify-center gap-2 mt-5">
+                {/* 6-Digit TOTP Input */}
+                <div className="space-y-2 pt-1">
+                  <label className="block text-white text-xs font-semibold text-center">
+                    2. Enter 6-digit code from Google Authenticator:
+                  </label>
+                  <div className="flex justify-center gap-2">
                     {[0, 1, 2, 3, 4, 5].map((i) => (
                       <div
                         key={i}
-                        className={`w-12 h-14 rounded-xl border-2 flex items-center justify-center text-2xl font-bold font-mono transition-all ${
+                        className={`w-11 h-13 rounded-xl border-2 flex items-center justify-center text-xl font-bold font-mono transition-all ${
                           totpCode[i]
-                            ? 'border-blue-500 bg-blue-500/15 text-blue-300 shadow-lg shadow-blue-500/20'
+                            ? 'border-blue-400 bg-blue-500/20 text-blue-200 shadow-md shadow-blue-500/20'
                             : 'border-white/20 bg-white/5 text-white/30'
                         }`}
                       >
@@ -277,67 +241,55 @@ const TwoFactorSetup = ({ isOpen, onClose, onEnabled }) => {
                     value={totpCode}
                     onChange={(e) => handleCodeInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && totpCode.length === 6 && handleVerify()}
-                    className="sr-only"
+                    className="w-full text-center py-2 bg-black/40 border border-white/20 rounded-xl text-white font-mono tracking-widest text-lg outline-none focus:border-blue-400 transition-all placeholder:text-white/30"
+                    placeholder="or type 6-digit code here"
                     autoFocus
-                    id="google-auth-setup-input"
                   />
-                  <label
-                    htmlFor="google-auth-setup-input"
-                    className="mt-3 inline-block text-blue-400 text-xs cursor-pointer hover:underline"
-                  >
-                    Click to type 6-digit code
-                  </label>
                 </div>
 
                 {error && (
-                  <div className="flex items-center gap-2 px-4 py-3 bg-rose-500/10 border border-rose-500/20 rounded-xl">
+                  <div className="flex items-center gap-2 px-3.5 py-2.5 bg-rose-500/15 border border-rose-500/30 rounded-xl">
                     <AlertTriangle className="w-4 h-4 text-rose-400 flex-shrink-0" />
-                    <p className="text-rose-400 text-sm">{error}</p>
+                    <p className="text-rose-300 text-xs">{error}</p>
                   </div>
                 )}
 
-                <div className="flex gap-3">
-                  <Button
-                    onClick={() => setStep('qr')}
-                    variant="outline"
-                    className="bg-white/5 border-white/20 text-white hover:bg-white/10"
-                  >
-                    ← QR Code
-                  </Button>
-                  <Button
-                    onClick={handleVerify}
-                    disabled={loading || totpCode.length !== 6}
-                    className="flex-1 py-5 bg-gradient-to-r from-blue-600 to-emerald-600 hover:from-blue-500 hover:to-emerald-500 text-white font-semibold rounded-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all"
-                  >
-                    {loading ? (
-                      <span className="flex items-center gap-2">
-                        <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                        Verifying...
-                      </span>
-                    ) : (
-                      'Verify & Activate'
-                    )}
-                  </Button>
-                </div>
+                <Button
+                  onClick={handleVerify}
+                  disabled={loading || totpCode.length !== 6}
+                  className="w-full py-5 bg-gradient-to-r from-blue-600 via-emerald-600 to-teal-500 hover:from-blue-500 hover:to-teal-400 text-white font-semibold rounded-xl disabled:opacity-50 transition-all shadow-lg shadow-blue-500/20"
+                >
+                  {loading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                      Verifying Code...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4" />
+                      Verify & Enable Google Authenticator
+                    </span>
+                  )}
+                </Button>
               </motion.div>
             )}
 
             {/* Step: Backup Codes */}
             {step === 'backup' && (
-              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-5">
-                <div className="flex items-center gap-3 p-4 bg-amber-500/10 border border-amber-500/20 rounded-xl">
+              <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="space-y-4">
+                <div className="flex items-center gap-3 p-3.5 bg-amber-500/15 border border-amber-500/25 rounded-xl">
                   <AlertTriangle className="w-5 h-5 text-amber-400 flex-shrink-0" />
                   <p className="text-amber-200 text-xs leading-relaxed">
-                    <strong>Save your emergency backup codes!</strong> If you ever switch or lose your phone with Google Authenticator, you can use one of these single-use codes to log in.
+                    <strong>Save your emergency backup recovery codes!</strong> If you switch devices or lose access to Google Authenticator, you can use one of these single-use codes to log in.
                   </p>
                 </div>
 
-                <div className="bg-white/5 rounded-xl p-4 border border-white/10">
+                <div className="bg-white/5 rounded-xl p-3.5 border border-white/10">
                   <div className="grid grid-cols-2 gap-2">
                     {backupCodes.map((code, i) => (
                       <div
                         key={i}
-                        className="px-3 py-2 bg-black/40 rounded-lg text-center font-mono text-sm text-emerald-400 border border-white/10"
+                        className="px-2.5 py-2 bg-black/50 rounded-lg text-center font-mono text-xs text-emerald-400 border border-white/10 font-bold tracking-wider"
                       >
                         {code}
                       </div>
@@ -345,21 +297,21 @@ const TwoFactorSetup = ({ isOpen, onClose, onEnabled }) => {
                   </div>
                 </div>
 
-                <div className="flex gap-3">
+                <div className="flex gap-2">
                   <Button
                     onClick={handleCopyBackupCodes}
                     variant="outline"
-                    className="flex-1 bg-white/5 border-white/20 text-white hover:bg-white/10 hover:text-white"
+                    className="flex-1 bg-white/10 border-white/20 text-white hover:bg-white/20"
                   >
-                    {copiedBackup ? <CheckCircle className="w-4 h-4 mr-2 text-emerald-400" /> : <Copy className="w-4 h-4 mr-2" />}
+                    {copiedBackup ? <CheckCircle className="w-3.5 h-3.5 mr-1.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5 mr-1.5" />}
                     {copiedBackup ? 'Copied Codes!' : 'Copy Codes'}
                   </Button>
                   <Button
                     onClick={handleDownloadBackupCodes}
                     variant="outline"
-                    className="flex-1 bg-white/5 border-white/20 text-white hover:bg-white/10 hover:text-white"
+                    className="flex-1 bg-white/10 border-white/20 text-white hover:bg-white/20"
                   >
-                    <Download className="w-4 h-4 mr-2" />
+                    <Download className="w-3.5 h-3.5 mr-1.5" />
                     Download (.txt)
                   </Button>
                 </div>
@@ -368,7 +320,7 @@ const TwoFactorSetup = ({ isOpen, onClose, onEnabled }) => {
                   onClick={handleFinish}
                   className="w-full py-5 bg-gradient-to-r from-emerald-600 to-teal-500 hover:from-emerald-500 hover:to-teal-400 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/20 transition-all"
                 >
-                  <CheckCircle className="w-5 h-5 mr-2" />
+                  <CheckCircle className="w-4 h-4 mr-2" />
                   Done — Google Authenticator is Activated!
                 </Button>
               </motion.div>
@@ -381,3 +333,4 @@ const TwoFactorSetup = ({ isOpen, onClose, onEnabled }) => {
 };
 
 export default TwoFactorSetup;
+

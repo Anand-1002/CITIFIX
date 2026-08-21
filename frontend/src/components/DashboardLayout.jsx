@@ -6,9 +6,11 @@ import { useSocket } from '@/contexts/SocketContext.jsx';
 import { motion } from 'framer-motion';
 import { Home, FileText, Users, Award, LogOut, Shield, BarChart2, Map, Menu, X, MessageCircle, Settings, Activity, Lock, Wifi, WifiOff } from 'lucide-react';
 import NotificationCenter from './NotificationCenter.jsx';
+import SidebarLiveAnalytics from './SidebarLiveAnalytics.jsx';
 import Beams from '../components/Background';
 
 const commonLinks = [
+  { to: '/analytics', icon: Activity, label: 'Real-Time Analytics', isLive: true },
   { to: '/community', icon: Users, label: 'Community' },
   { to: '/leaderboard', icon: Award, label: 'Leaderboard' },
   { to: '/assistant', icon: MessageCircle, label: 'AI Assistant' },
@@ -22,7 +24,6 @@ const citizenLinks = [
 
 const adminLinks = [
   { to: '/admin', icon: Shield, label: 'Dashboard' },
-  { to: '/analytics', icon: Activity, label: 'Live Analytics' },
   { to: '/admin/analytics', icon: BarChart2, label: 'Reports' },
   { to: '/admin/map', icon: Map, label: 'Map View' },
 ];
@@ -36,21 +37,29 @@ const subAdminLinks = [
   { to: '/subadmin', icon: FileText, label: 'My Assignments' },
 ];
 
-const SidebarLink = ({ to, icon: Icon, label, onClick }) => (
+const SidebarLink = ({ to, icon: Icon, label, onClick, isLive }) => (
   <NavLink
     to={to}
     end={to === '/admin'}
     onClick={onClick}
     className={({ isActive }) =>
-      `flex items-center gap-3 px-4 py-3 rounded-xl transition-all duration-300 ${
+      `flex items-center justify-between px-4 py-3 rounded-xl transition-all duration-300 ${
         isActive
           ? 'bg-white/20 text-white shadow-lg backdrop-blur-sm border border-white/30'
           : 'text-white/70 hover:bg-white/10 hover:text-white backdrop-blur-sm border border-transparent hover:border-white/20'
       }`
     }
   >
-    <Icon className="w-5 h-5" />
-    <span className="font-medium">{label}</span>
+    <div className="flex items-center gap-3">
+      <Icon className="w-5 h-5" />
+      <span className="font-medium">{label}</span>
+    </div>
+    {isLive && (
+      <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wider text-emerald-400 bg-emerald-500/20 px-2 py-0.5 rounded-full border border-emerald-500/30">
+        <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        Live
+      </span>
+    )}
   </NavLink>
 );
 
@@ -112,7 +121,7 @@ const DashboardLayout = ({ children }) => {
           fixed lg:relative inset-y-0 left-0 z-40
           w-72 bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-2xl
           border-r border-white/10 p-6
-          flex flex-col justify-between
+          flex flex-col justify-between overflow-y-auto
           transform transition-transform duration-300 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           shadow-[0_8px_32px_0_rgba(255,255,255,0.1)]
@@ -168,13 +177,17 @@ const DashboardLayout = ({ children }) => {
           </nav>
         </div>
 
-        <button
-          onClick={handleLogout}
-          className="flex items-center gap-3 px-4 py-3 rounded-xl text-white/70 hover:bg-red-500/20 hover:text-white transition-all duration-300 backdrop-blur-sm border border-transparent hover:border-red-500/30 group"
-        >
-          <LogOut className="w-5 h-5 group-hover:rotate-12 transition-transform" />
-          <span className="font-medium">Logout</span>
-        </button>
+        <div className="pt-4 border-t border-white/10 mt-6">
+          <SidebarLiveAnalytics onNavigate={() => setSidebarOpen(false)} />
+
+          <button
+            onClick={handleLogout}
+            className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-white/70 hover:bg-red-500/20 hover:text-white transition-all duration-300 backdrop-blur-sm border border-transparent hover:border-red-500/30 group"
+          >
+            <LogOut className="w-5 h-5 group-hover:rotate-12 transition-transform" />
+            <span className="font-medium">Logout</span>
+          </button>
+        </div>
       </aside>
 
       {sidebarOpen && (

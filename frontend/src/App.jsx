@@ -146,7 +146,7 @@ function App() {
             <Route 
               path="/analytics" 
               element={
-                <PrivateRoute role={["admin", "superadmin"]}>
+                <PrivateRoute>
                   <RealTimeDashboard />
                 </PrivateRoute>
               } 

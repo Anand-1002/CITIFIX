@@ -26,17 +26,24 @@ export const AuthProvider = ({ children }) => {
       }
 
       if (storedUser) {
-        setUser(JSON.parse(storedUser));
+        try {
+          setUser(JSON.parse(storedUser));
+        } catch (e) {}
       }
 
       try {
         const me = await authApi.me();
-        setUser(me.user);
-        localStorage.setItem('citifix_user', JSON.stringify(me.user));
-      } catch {
-        localStorage.removeItem('citifix_user');
-        authStorage.clearToken();
-        setUser(null);
+        if (me && me.user) {
+          setUser(me.user);
+          localStorage.setItem('citifix_user', JSON.stringify(me.user));
+        }
+      } catch (err) {
+        // If we have stored user, retain it (demo/offline resilience)
+        if (!storedUser) {
+          localStorage.removeItem('citifix_user');
+          authStorage.clearToken();
+          setUser(null);
+        }
       } finally {
         setLoading(false);
       }

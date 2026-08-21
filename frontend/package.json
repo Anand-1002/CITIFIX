@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "vite --host :: --port 3000",
     "dev:all": "concurrently \"npm run dev\" \"npm --prefix ../backend start\"",
-    "build": "node tools/generate-llms.js || true && vite build",
+    "build": "node tools/generate-llms.js || true && vite build && node -e \"import('fs').then(fs => fs.writeFileSync('dist/_redirects', '/* /index.html 200\\n'))\"",
     "preview": "vite preview --host :: --port 3000"
   },
   "dependencies": {

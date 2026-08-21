@@ -10,6 +10,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useToast } from '@/components/ui/use-toast';
 import { authApi } from '@/lib/api.js';
 import TwoFactorVerify from '@/components/TwoFactorVerify.jsx';
+import TwoFactorLoginSetup from '@/components/TwoFactorLoginSetup.jsx';
 import logo from '../assets/citifix-logo.png';
 import Beams from '../components/Background';
 import Navbar from '../components/Navbar';
@@ -32,7 +33,7 @@ const LoginPage = () => {
   const [otp, setOtp] = useState('');
   const [devOtp, setDevOtp] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [twoFAData, setTwoFAData] = useState(null); // { tempToken, user }
+  const [twoFAData, setTwoFAData] = useState(null); // { tempToken, user, needsSetup, qrCode, manualKey, backupCodes }
 
   const formatPhone = (digits) => {
     if (!digits) return '';
@@ -72,10 +73,17 @@ const LoginPage = () => {
       setSubmitting(true);
       const result = await authApi.verifyLoginOtp(phone, otp);
 
-      // Check if 2FA is required
+      // Check if 2FA is required or needs activation
       if (result.requires2FA) {
-        setTwoFAData({ tempToken: result.tempToken, user: result.user });
-        setStep(3); // Show 2FA verification
+        setTwoFAData({
+          tempToken: result.tempToken,
+          user: result.user,
+          needsSetup: result.needsSetup,
+          qrCode: result.qrCode,
+          manualKey: result.manualKey,
+          backupCodes: result.backupCodes,
+        });
+        setStep(3); // Show 2FA screen
         return;
       }
 
@@ -97,7 +105,7 @@ const LoginPage = () => {
     login(data.user, data.token);
     toast({
       title: 'Welcome back!',
-      description: data.usedBackupCode ? 'Logged in with backup code' : undefined,
+      description: data.usedBackupCode ? 'Logged in with backup code' : 'Google Authenticator verified successfully',
     });
     navigate(getRoleDestination(data.user.role));
   };
@@ -109,7 +117,7 @@ const LoginPage = () => {
         <meta name="description" content="Login to your CITIFIX account to report issues and track resolutions." />
       </Helmet>
       
-     <div className="relative min-h-screen flex items-center  pt-24 justify-center p-4 bg-black text-black overflow-hidden">
+     <div className="relative min-h-screen flex items-center pt-24 justify-center p-4 bg-black text-black overflow-hidden">
 
   <div className="fixed inset-0 z-0">
         <Beams
@@ -141,110 +149,124 @@ const LoginPage = () => {
       </button>
 
       
-      <div className="flex items-center justify-center gap-3 mb-8">
+      <div className="flex items-center justify-center gap-3 mb-6">
         <img src={logo} alt="CITIFIX Logo" className="w-12 h-12 rounded-xl object-cover shadow-lg" />
         <span className="text-2xl font-bold tracking-wide text-white/90">
           CITIFIX
         </span>
       </div>
 
-
-      <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-2">
-        Welcome Back
-      </h2>
-      <p className="text-sm sm:text-base text-gray-300 text-center mb-6 sm:mb-8">
-        Login using mobile OTP
-      </p>
-
       {step === 3 && twoFAData ? (
-        <TwoFactorVerify
-          tempToken={twoFAData.tempToken}
-          user={twoFAData.user}
-          onVerified={handle2FAVerified}
-          onBack={() => {
-            setStep(1);
-            setTwoFAData(null);
-            setOtp('');
-          }}
-        />
-      ) : step === 1 ? (
-        <form onSubmit={requestOtp} className="space-y-6">
-          <div>
-            <Label htmlFor="phone" className="text-white">
-              Mobile Number
-            </Label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 select-none">
-                +91
-              </span>
-              <Input
-                id="phone"
-                type="tel"
-                placeholder="XXXXX XXXXX"
-                value={formatPhone(phone)}
-                onChange={handlePhoneChange}
-                required
-                maxLength={11}
-                className="pl-12 bg-white text-black border-black/20 placeholder:text-gray-400 focus:border-black focus:ring-black/10"
-                inputMode="numeric"
-              />
-            </div>
-          </div>
-
-          <Button disabled={submitting} type="submit" className="w-full hover:bg-white/70 hover:text-black bg-black text-white">
-            {submitting ? 'Sending...' : 'Send OTP'}
-          </Button>
-        </form>
-      ) : (
-        <form onSubmit={verifyOtp} className="space-y-6">
-          <div>
-            <Label htmlFor="otp" className="text-white">
-              Enter OTP
-            </Label>
-            <Input
-              id="otp"
-              type="text"
-              placeholder="6-digit OTP"
-              value={otp}
-              onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-              required
-              maxLength={6}
-              className="bg-white text-black border-black/20 placeholder:text-gray-400 focus:border-black focus:ring-black/10"
-              inputMode="numeric"
-            />
-            {!!devOtp && (
-              <p className="text-xs text-gray-300 mt-2">Dev OTP: {devOtp}</p>
-            )}
-          </div>
-
-          <Button disabled={submitting} type="submit" className="w-full hover:bg-white/70 hover:text-black bg-black text-white">
-            {submitting ? 'Verifying...' : 'Verify OTP'}
-          </Button>
-
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => {
+        twoFAData.needsSetup ? (
+          <TwoFactorLoginSetup
+            setupData={twoFAData}
+            onVerified={handle2FAVerified}
+            onBack={() => {
               setStep(1);
+              setTwoFAData(null);
               setOtp('');
             }}
-            className="w-full bg-white/10 text-white border-white/30 hover:bg-white/20"
-          >
-            Back
-          </Button>
-        </form>
-      )}
+          />
+        ) : (
+          <TwoFactorVerify
+            tempToken={twoFAData.tempToken}
+            user={twoFAData.user}
+            onVerified={handle2FAVerified}
+            onBack={() => {
+              setStep(1);
+              setTwoFAData(null);
+              setOtp('');
+            }}
+          />
+        )
+      ) : (
+        <>
+          <h2 className="text-2xl sm:text-3xl font-bold text-white text-center mb-2">
+            Welcome Back
+          </h2>
+          <p className="text-sm sm:text-base text-gray-300 text-center mb-6 sm:mb-8">
+            Login using mobile OTP
+          </p>
 
-  
-      <p className="text-center mt-6 text-sm text-white">
-        Don't have an account?{" "}
-        <button
-          onClick={() => navigate('/register')}
-          className="text-white text-sm font-semibold hover:underline"
-        >
-          Register
-        </button>
-      </p>
+          {step === 1 ? (
+            <form onSubmit={requestOtp} className="space-y-6">
+              <div>
+                <Label htmlFor="phone" className="text-white">
+                  Mobile Number
+                </Label>
+                <div className="relative">
+                  <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-gray-400 select-none">
+                    +91
+                  </span>
+                  <Input
+                    id="phone"
+                    type="tel"
+                    placeholder="XXXXX XXXXX"
+                    value={formatPhone(phone)}
+                    onChange={handlePhoneChange}
+                    required
+                    maxLength={11}
+                    className="pl-12 bg-white text-black border-black/20 placeholder:text-gray-400 focus:border-black focus:ring-black/10"
+                    inputMode="numeric"
+                  />
+                </div>
+              </div>
+
+              <Button disabled={submitting} type="submit" className="w-full hover:bg-white/70 hover:text-black bg-black text-white">
+                {submitting ? 'Sending...' : 'Send OTP'}
+              </Button>
+            </form>
+          ) : (
+            <form onSubmit={verifyOtp} className="space-y-6">
+              <div>
+                <Label htmlFor="otp" className="text-white">
+                  Enter OTP
+                </Label>
+                <Input
+                  id="otp"
+                  type="text"
+                  placeholder="6-digit OTP"
+                  value={otp}
+                  onChange={(e) => setOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  required
+                  maxLength={6}
+                  className="bg-white text-black border-black/20 placeholder:text-gray-400 focus:border-black focus:ring-black/10"
+                  inputMode="numeric"
+                />
+                {!!devOtp && (
+                  <p className="text-xs text-gray-300 mt-2">Dev OTP: {devOtp}</p>
+                )}
+              </div>
+
+              <Button disabled={submitting} type="submit" className="w-full hover:bg-white/70 hover:text-black bg-black text-white">
+                {submitting ? 'Verifying...' : 'Verify OTP'}
+              </Button>
+
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setStep(1);
+                  setOtp('');
+                }}
+                className="w-full bg-white/10 text-white border-white/30 hover:bg-white/20"
+              >
+                Back
+              </Button>
+            </form>
+          )}
+
+          <p className="text-center mt-6 text-sm text-white">
+            Don't have an account?{" "}
+            <button
+              onClick={() => navigate('/register')}
+              className="text-white text-sm font-semibold hover:underline"
+            >
+              Register
+            </button>
+          </p>
+        </>
+      )}
 
     </div>
   </motion.div>
