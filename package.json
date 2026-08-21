@@ -7,6 +7,7 @@
     "build:frontend": "npm --prefix frontend run build",
     "dev:frontend": "npm --prefix frontend run dev",
     "dev:backend": "npm --prefix backend start",
+    "dev:all": "npm --prefix frontend run dev:all",
     "install:all": "npm --prefix frontend install; npm --prefix backend install"
   }
 }

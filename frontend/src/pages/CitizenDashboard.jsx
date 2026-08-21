@@ -224,6 +224,80 @@ const CitizenDashboard = () => {
               </div>
             )}
 
+            {/* Recent Complaints Feed directly in Dashboard */}
+            <div className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <FileText className="w-6 h-6 text-white" />
+                  <h2 className="text-2xl font-bold text-white">My Reported Issues</h2>
+                </div>
+                {userComplaints.length > 0 && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={() => navigate('/my-complaints')}
+                    className="text-white/70 hover:text-white hover:bg-white/10"
+                  >
+                    View All ({userComplaints.length}) <ArrowRight className="w-4 h-4 ml-1" />
+                  </Button>
+                )}
+              </div>
+
+              {userComplaints.length === 0 ? (
+                <div className="bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl rounded-2xl p-8 border border-white/10 text-center">
+                  <p className="text-white/60 mb-3">You haven't reported any civic complaints yet.</p>
+                  <Button onClick={() => navigate('/report')} className="bg-white text-black hover:bg-white/90 font-medium">
+                    <Plus className="w-4 h-4 mr-2" /> Report Your First Issue
+                  </Button>
+                </div>
+              ) : (
+                <div className="grid md:grid-cols-2 gap-4">
+                  {userComplaints.slice(0, 4).map((c) => {
+                    const imgSrc = c.imageUrl || c.image;
+                    const statusColor = 
+                      c.status === 'resolved' ? 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30' :
+                      c.status === 'in_progress' || c.status === 'assigned' ? 'bg-amber-500/20 text-amber-300 border-amber-500/30' :
+                      c.status === 'escalated' ? 'bg-purple-500/20 text-purple-300 border-purple-500/30' :
+                      'bg-blue-500/20 text-blue-300 border-blue-500/30';
+
+                    return (
+                      <div
+                        key={c.id}
+                        onClick={() => navigate('/my-complaints')}
+                        className="group cursor-pointer bg-gradient-to-br from-white/10 to-white/5 backdrop-blur-xl rounded-2xl p-4 border border-white/10 hover:border-white/30 transition-all duration-300 flex gap-4 items-center"
+                      >
+                        {imgSrc ? (
+                          <img 
+                            src={imgSrc} 
+                            alt={c.title} 
+                            className="w-16 h-16 rounded-xl object-cover border border-white/10 flex-shrink-0"
+                          />
+                        ) : (
+                          <div className="w-16 h-16 rounded-xl bg-white/5 border border-white/10 flex items-center justify-center text-white/30 flex-shrink-0">
+                            <FileText className="w-6 h-6" />
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <span className="text-xs text-white/40 font-mono">#{c.id}</span>
+                            <span className={`text-[11px] font-semibold px-2 py-0.5 rounded-full border capitalize ${statusColor}`}>
+                              {c.status || 'open'}
+                            </span>
+                          </div>
+                          <h4 className="text-white font-semibold text-sm truncate group-hover:text-amber-300 transition-colors">
+                            {c.title}
+                          </h4>
+                          <p className="text-white/50 text-xs truncate mt-0.5">
+                            {c.address || c.category || 'Reported Issue'}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
             <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
               <motion.div
               initial={{ opacity: 0, y: 20 }}

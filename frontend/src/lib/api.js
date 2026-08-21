@@ -258,31 +258,49 @@ export const authApi = {
 
 export const complaintsApi = {
   create: async (payload) => {
+    let created = null;
     try {
-      return await request("/complaints", {
+      created = await request("/complaints", {
         method: "POST",
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          ...payload,
+          imageUrl: payload.imageUrl || payload.image,
+          image: payload.image || payload.imageUrl,
+        }),
       });
     } catch (err) {
       console.warn("[Complaints API] Offline fallback for create:", err.message);
-      const complaints = getStoredComplaints();
-      const newComplaint = {
+      const currentUser = JSON.parse(localStorage.getItem("citifix_user") || "{}");
+      created = {
         id: Date.now(),
         ...payload,
-        status: "OPEN",
+        imageUrl: payload.imageUrl || payload.image,
+        image: payload.image || payload.imageUrl,
+        userId: currentUser.id || 1,
+        userPhone: currentUser.phone,
+        userName: currentUser.name || "Citizen User",
+        status: "open",
         votes: 1,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      complaints.unshift(newComplaint);
-      saveStoredComplaints(complaints);
-      return { message: "Complaint created successfully", complaint: newComplaint };
     }
+
+    if (created) {
+      const complaints = getStoredComplaints();
+      const filtered = complaints.filter(c => String(c.id) !== String(created.id));
+      filtered.unshift(created);
+      saveStoredComplaints(filtered);
+    }
+
+    return created;
   },
 
   list: async () => {
     try {
-      return await request("/complaints");
+      const data = await request("/complaints");
+      if (Array.isArray(data) && data.length > 0) return data;
+      return getStoredComplaints();
     } catch (err) {
       return getStoredComplaints();
     }
@@ -290,7 +308,9 @@ export const complaintsApi = {
 
   listMine: async () => {
     try {
-      return await request("/complaints/user/my-complaints");
+      const data = await request("/complaints/user/my-complaints");
+      if (Array.isArray(data) && data.length > 0) return data;
+      return getStoredComplaints();
     } catch (err) {
       return getStoredComplaints();
     }
