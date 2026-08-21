@@ -1,0 +1,200 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+model User {
+  id                   Int                @id @default(autoincrement())
+  name                 String
+  email                String?
+  phone                String             @unique
+  role                 String             @default("CITIZEN")
+  department           String?
+  rewardPoints         Int                @default(0)
+  twoFactorEnabled     Boolean            @default(false)
+  twoFactorSecret      String?
+  twoFactorBackupCodes String?
+  complaints           Complaint[]        @relation("UserComplaints")
+  assignedComplaints   Complaint[]        @relation("SubAdminComplaints")
+  votes                ComplaintVote[]
+  otpRequests          OtpRequest[]
+  chatMessages         ChatMessage[]
+  slaConfigs           SlaConfig[]
+  extensionRequests    ExtensionRequest[] @relation("ExtensionRequests")
+  raisedIssues         RaisedIssue[]      @relation("RaisedIssuesByUser")
+  assignedRaisedIssues RaisedIssue[]      @relation("RaisedIssuesAssignedTo")
+  bidsCreated          ProjectBid[]       @relation("BidsCreated")
+  bidProposals         BidProposal[]      @relation("ProposalsSubmitted")
+  notifications        Notification[]
+  createdAt            DateTime           @default(now())
+  updatedAt            DateTime           @updatedAt
+}
+
+model Notification {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  message   String
+  metadata  String?
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+}
+
+model Complaint {
+  id                      Int                @id @default(autoincrement())
+  title                   String
+  description             String
+  category                String
+  latitude                Float
+  longitude               Float
+  address                 String?
+  imageUrl                String?
+  status                  String             @default("OPEN")
+  votes                   Int                @default(0)
+  anonymous               Boolean            @default(true)
+  tweetPosted             Boolean            @default(false)
+  escalatedAt             DateTime?
+  resolvedAt              DateTime?
+  xPostId                 String?
+  xPostUrl                String?
+  xPostStatus             String             @default("PENDING")
+  xPostAttempts           Int                @default(0)
+  lastXPostAttemptAt      DateTime?
+  xPostError              String?
+  assignedDepartment      String?
+  assignedAdminId         Int?
+  assignedAdmin           User?              @relation("SubAdminComplaints", fields: [assignedAdminId], references: [id])
+  assignedAt              DateTime?
+  slaDeadline             DateTime?
+  slaBreached             Boolean            @default(false)
+  slaBreach               String             @default("NONE")
+  projectAmount           Float?
+  warrantyPeriod          Int?
+  projectDeadline         DateTime?
+  projectNote             String?
+  extensionRequests       ExtensionRequest[]
+  raisedIssues            RaisedIssue[]
+  bids                    ProjectBid[]
+  isOnHold                Boolean            @default(false)
+  resolutionImageUrl     String?
+  resolutionChallenged   Boolean            @default(false)
+  resolutionChallengeNote String?
+  userId                  Int
+  user                    User               @relation("UserComplaints", fields: [userId], references: [id])
+  complaintVotes          ComplaintVote[]
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+}
+
+model ExtensionRequest {
+  id            Int      @id @default(autoincrement())
+  complaintId   Int
+  complaint     Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  requestedById Int
+  requestedBy   User     @relation("ExtensionRequests", fields: [requestedById], references: [id])
+  reason        String
+  requestedDays Int
+  status        String   @default("PENDING")
+  reviewNote    String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+}
+
+model SlaConfig {
+  id            Int      @id @default(autoincrement())
+  department    String   @unique
+  daysToResolve Int      @default(7)
+  updatedById   Int
+  updatedBy     User     @relation(fields: [updatedById], references: [id])
+  updatedAt     DateTime @updatedAt
+  createdAt     DateTime @default(now())
+}
+
+model ComplaintVote {
+  id          Int       @id @default(autoincrement())
+  complaintId Int
+  userId      Int
+  complaint   Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt   DateTime  @default(now())
+
+  @@unique([complaintId, userId])
+}
+
+model OtpRequest {
+  id        Int      @id @default(autoincrement())
+  phone     String
+  otpCode   String
+  purpose   String
+  expiresAt DateTime
+  used      Boolean  @default(false)
+  userId    Int?
+  user      User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+  createdAt DateTime @default(now())
+}
+
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  role      String
+  content   String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+}
+
+model RaisedIssue {
+  id           Int       @id @default(autoincrement())
+  complaintId  Int
+  complaint    Complaint @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  raisedById   Int
+  raisedBy     User      @relation("RaisedIssuesByUser", fields: [raisedById], references: [id])
+  assignedToId Int?
+  assignedTo   User?     @relation("RaisedIssuesAssignedTo", fields: [assignedToId], references: [id])
+  title        String
+  description  String
+  status       String    @default("PENDING")
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+}
+
+model ProjectBid {
+  id                Int           @id @default(autoincrement())
+  complaintId       Int
+  complaint         Complaint     @relation(fields: [complaintId], references: [id], onDelete: Cascade)
+  createdById       Int
+  createdBy         User          @relation("BidsCreated", fields: [createdById], references: [id])
+  department        String
+  title             String
+  scope             String
+  estimatedBudget   Float?
+  deadline          DateTime
+  projectTimeline   Int
+  status            String        @default("OPEN")
+  awardedProposalId Int?
+  proposals         BidProposal[]
+  createdAt         DateTime      @default(now())
+  updatedAt         DateTime      @updatedAt
+}
+
+model BidProposal {
+  id           Int        @id @default(autoincrement())
+  bidId        Int
+  bid          ProjectBid @relation(fields: [bidId], references: [id], onDelete: Cascade)
+  subAdminId   Int
+  subAdmin     User       @relation("ProposalsSubmitted", fields: [subAdminId], references: [id])
+  quotedBudget Float
+  proposedDays Int
+  teamSize     Int?
+  approach     String
+  status       String     @default("PENDING")
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+
+  @@unique([bidId, subAdminId])
+}

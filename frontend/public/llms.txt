@@ -1,0 +1,7 @@
+## Pages
+- [Analytics - CITIFIX](/adminanalytics): View real-time analytics for civic issues.
+- [Community Portal - CITIFIX](/communityportal): View and vote on issues reported by the community.
+- [Dashboard - CITIFIX](/citizendashboard): View your complaints, track resolutions, and manage your CITIFIX account.
+- [Leaderboard - CITIFIX](/leaderboard): See top contributors on CITIFIX.
+- [My Complaints - CITIFIX](/mycomplaints): Track your submitted complaints.
+- [Report an Issue - CITIFIX](/reportissue): Report a new civic issue.

@@ -1,0 +1,92 @@
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Figtree:ital,wght@0,300..900;1,300..900&display=swap');
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Inter','Figtree', sans-serif;
+  @apply bg-slate-900 text-slate-100; /* Dark background, light text */
+  overflow-x: hidden;
+}
+
+:root {
+  --saffron: #FF9933;
+  --white: #FFFFFF;
+  --green: #138808;
+  --navy-blue: #000080;
+  --border: 216 12% 25%; /* Darker border */
+  --input: 216 12% 25%; /* Darker input */
+  --ring: 216 12% 50%; /* Adjusted ring for dark mode */
+  --background: 222.2 84% 4.9%; /* Dark background */
+  --foreground: 210 40% 98%; /* Light foreground */
+  --primary: 210 40% 98%; /* Light primary for text/icons on dark */
+  --primary-foreground: 222.2 47.4% 11.2%; /* Dark text on primary */
+  --secondary: 216 12% 20%; /* Dark secondary */
+  --secondary-foreground: 210 40% 98%; /* Light text on secondary */
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 210 40% 98%;
+  --muted: 216 12% 20%; /* Dark muted */
+  --muted-foreground: 215.4 16.3% 60%; /* Lighter muted text */
+  --accent: 216 12% 25%; /* Dark accent */
+  --accent-foreground: 210 40% 98%; /* Light text on accent */
+  --popover: 222.2 84% 4.9%; /* Dark popover */
+  --popover-foreground: 210 40% 98%; /* Light popover text */
+  --card: 222.2 84% 4.9%; /* Dark card */
+  --card-foreground: 210 40% 98%; /* Light card text */
+  --radius: 0.5rem;
+}
+
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+  border-radius: 0.5rem;
+}
+
+.gradient-saffron {
+  background: linear-gradient(135deg, #FF9933 0%, #FF7700 100%);
+}
+
+.gradient-green {
+  background: linear-gradient(135deg, #138808 0%, #0A5504 100%);
+}
+
+.gradient-deep-blue { /* New gradient for "Ready to Make a Difference" */
+  background: linear-gradient(135deg, #0A0A2A 0%, #000080 100%);
+}
+
+.gradient-tricolor { /* Kept for compatibility if still used elsewhere unexpectedly, but will be removed for the specific section */
+  background: linear-gradient(180deg, #FF9933 0%, #FFFFFF 50%, #138808 100%);
+}
+
+.text-gradient { /* Adjusted for dark theme */
+  background: linear-gradient(135deg, #FF9933 0%, #138808 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.card-hover {
+  transition: all 0.3s ease;
+}
+
+.card-hover:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.4), 0 10px 10px -5px rgba(0, 0, 0, 0.2); /* Darker shadows for dark mode */
+}
+
+@keyframes confetti {
+  0% { transform: translateY(0) rotate(0deg); opacity: 1; }
+  100% { transform: translateY(-100vh) rotate(720deg); opacity: 0; }
+}
+
+.confetti {
+  animation: confetti 2s ease-out forwards;
+}

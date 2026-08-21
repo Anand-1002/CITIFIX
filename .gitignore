@@ -1,0 +1,41 @@
+# ── Dependencies ──────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.js
+
+# ── Environment variables (NEVER commit secrets) ───────────────
+.env
+.env.*
+!.env.example
+
+# ── Build outputs ──────────────────────────────────────────────
+dist/
+build/
+.next/
+out/
+
+# ── Vite cache ─────────────────────────────────────────────────
+.vite/
+
+# ── Prisma generated client (regenerated on deploy) ────────────
+backend/node_modules/
+backend/prisma/migrations/
+
+# ── Logs ──────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# ── OS / Editor ────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# ── Misc ───────────────────────────────────────────────────────
+*.tmp
+*.swp
+*.db
+dev.db
